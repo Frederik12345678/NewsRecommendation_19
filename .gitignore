@@ -5,3 +5,4 @@ Project_19/Data/.DS_Store
 /test/data
 test/data/ebnerd/articles.parquet
 *.parquet
+Project_19/Test/Frederik/downloads/data/state_dict/NRMS/weights.weights.h5

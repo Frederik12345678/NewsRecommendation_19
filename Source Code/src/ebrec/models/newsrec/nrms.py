@@ -189,3 +189,8 @@ class NRMSModel:
         scorer = tf.keras.Model([his_input_title, pred_input_title_one], pred_one)
 
         return model, scorer
+    
+
+
+
+    
