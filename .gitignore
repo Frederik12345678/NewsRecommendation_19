@@ -1,0 +1,7 @@
+
+Data/.DS_Store
+Project_19/Data/.DS_Store
+/Project_19/Data
+/test/data
+test/data/ebnerd/articles.parquet
+*.parquet
