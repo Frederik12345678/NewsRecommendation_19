@@ -25,8 +25,8 @@ class NRMSModelPytorch(nn.Module):
         self.user_encoder = self._build_userencoder(self.news_encoder)
 
         # Define optimizer and loss
-        self.criterion = self._get_loss(hparams["loss"])
-        self.optimizer = self._get_opt(hparams["optimizer"], hparams["learning_rate"])
+        self.criterion = self._get_loss(hparams.loss)
+        self.optimizer = self._get_opt(hparams.optimizer, hparams.learning_rate)
 
     def _get_loss(self, loss):
         if loss == "cross_entropy_loss":
@@ -48,8 +48,8 @@ class NRMSModelPytorch(nn.Module):
             def __init__(self, hparams, titleencoder):
                 super(UserEncoder, self).__init__()
                 self.titleencoder = titleencoder
-                self.attention = SelfAttention_torch(hparams["head_num"], hparams["head_dim"], seed=self.seed)
-                self.att_layer = AttLayer2_torch(hparams["attention_hidden_dim"], seed=self.seed)
+                self.attention = SelfAttention_torch(hparams.head_num, hparams.head_num)
+                self.att_layer = AttLayer2_torch(hparams.attention_hidden_dim)
 
             def forward(self, his_input_title):
                 # Encode each news in the history
@@ -66,12 +66,15 @@ class NRMSModelPytorch(nn.Module):
             def __init__(self, embedding_layer, hparams, seed):
                 super(NewsEncoder, self).__init__()
                 self.embedding = embedding_layer
-                self.dropout1 = nn.Dropout(hparams["dropout"])
-                self.attention = SelfAttention_torch(hparams["head_num"], hparams["head_dim"], seed=seed)
-                self.dropout2 = nn.Dropout(hparams["dropout"])
-                self.att_layer = AttLayer2_torch(hparams["attention_hidden_dim"], seed=seed)
+                self.dropout1 = nn.Dropout(hparams.dropout)  # Use attribute access here
+                self.attention = SelfAttention_torch(hparams.head_num, hparams.head_dim, seed=seed)
+                self.dropout2 = nn.Dropout(hparams.dropout)  # Use attribute access here
+                self.att_layer = AttLayer2_torch(hparams.attention_hidden_dim, seed=seed)
+
 
             def forward(self, sequences_input_title):
+                # Convert input to LongTensor
+                sequences_input_title = sequences_input_title.long()
                 embedded_sequences_title = self.embedding(sequences_input_title)
                 y = self.dropout1(embedded_sequences_title)
                 y = self.attention(y)

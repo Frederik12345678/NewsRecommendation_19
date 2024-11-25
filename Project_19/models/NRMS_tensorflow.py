@@ -51,6 +51,10 @@ class AttLayer2(layers.Layer):
             initializer=keras.initializers.glorot_uniform(seed=self.seed),
             trainable=True,
         )
+
+        #print("W shape:", self.W.shape)
+        #print("b shape:", self.b.shape)
+        #print("q shape:", self.q.shape)
         super(AttLayer2, self).build(input_shape)  # be sure you call this somewhere!
 
     def call(self, inputs, mask=None, **kwargs):
@@ -79,6 +83,11 @@ class AttLayer2(layers.Layer):
 
         attention_weight = K.expand_dims(attention_weight)
         weighted_input = inputs * attention_weight
+        #print("Input shape:", inputs.shape)
+        #print("Attention shape (before squeeze):", attention.shape)
+        #print("Attention weight shape:", attention_weight.shape)
+        #print("Weighted input shape:", weighted_input.shape)
+
         return K.sum(weighted_input, axis=1)
 
     def compute_mask(self, input, input_mask=None):
@@ -171,6 +180,9 @@ class SelfAttention(layers.Layer):
             initializer=keras.initializers.glorot_uniform(seed=self.seed),
             trainable=True,
         )
+        #print("WQ shape:", self.WQ.shape)
+        #print("WK shape:", self.WK.shape)
+        #print("WV shape:", self.WV.shape)
         super(SelfAttention, self).build(input_shape)
 
     def Mask(self, inputs, seq_len, mode="add"):
@@ -212,6 +224,12 @@ class SelfAttention(layers.Layer):
             Q_len, V_len = None, None
         elif len(QKVs) == 5:
             Q_seq, K_seq, V_seq, Q_len, V_len = QKVs
+        
+        
+        #print("Q_seq:", Q_seq.shape)
+        #print("K_seq:", K_seq.shape)
+        #print("V_seq:", V_seq.shape)
+        #print("WQ weight:", self.WQ.shape)
         Q_seq = K.dot(Q_seq, self.WQ)
         Q_seq = K.reshape(
             Q_seq, shape=(-1, K.shape(Q_seq)[1], self.multiheads, self.head_dim)
@@ -252,6 +270,11 @@ class SelfAttention(layers.Layer):
 
         O_seq = K.reshape(O_seq, shape=(-1, K.shape(O_seq)[1], self.output_dim))
         O_seq = self.Mask(O_seq, Q_len, "mul")
+        #print("Q_seq shape (before transform):", Q_seq.shape)
+        #print("K_seq shape (before transform):", K_seq.shape)
+        #print("V_seq shape (before transform):", V_seq.shape)
+        #print("Attention logits shape:", A.shape)
+        #print("Output sequence shape:", O_seq.shape)
         return O_seq
 
     def get_config(self):
@@ -352,6 +375,8 @@ class NRMSModel:
             object: a model used to evaluate and inference.
         """
         model, scorer = self._build_nrms()
+        #print("Model input shape (history):", his_input_title.shape)
+        #print("Model input shape (prediction):", pred_input_title.shape)
         return model, scorer
 
     def _build_userencoder(self, titleencoder):
@@ -366,16 +391,22 @@ class NRMSModel:
         his_input_title = tf.keras.Input(
             shape=(self.hparams.history_size, self.hparams.title_size), dtype="int32"
         )
-
+        print("USERENCODER - His_in:", his_input_title.shape)
         click_title_presents = tf.keras.layers.TimeDistributed(titleencoder)(
             his_input_title
         )
+
+        print("USERENCODER - Clicked:", click_title_presents.shape)
+
         y = SelfAttention(self.hparams.head_num, self.hparams.head_dim, seed=self.seed)(
             [click_title_presents] * 3
         )
+        print("USERENCODER - att 1:", y.shape)
         user_present = AttLayer2(self.hparams.attention_hidden_dim, seed=self.seed)(y)
 
+        print("USERENCODER - att 2:", user_present.shape)
         model = tf.keras.Model(his_input_title, user_present, name="user_encoder")
+        
         return model
 
     def _build_newsencoder(self):
@@ -397,15 +428,18 @@ class NRMSModel:
             shape=(self.hparams.title_size,), dtype="int32"
         )
         embedded_sequences_title = embedding_layer(sequences_input_title)
-
+        print("NEWSENCODER - embedded layer:", embedded_sequences_title.shape)
         y = tf.keras.layers.Dropout(self.hparams.dropout)(embedded_sequences_title)
         y = SelfAttention(self.hparams.head_num, self.hparams.head_dim, seed=self.seed)(
             [y, y, y]
         )
+        print("NEWSENCODER - att 1:", y.shape)
         y = tf.keras.layers.Dropout(self.hparams.dropout)(y)
         pred_title = AttLayer2(self.hparams.attention_hidden_dim, seed=self.seed)(y)
-
+        print("NEWSENCODER - att 2:", pred_title.shape)
         model = tf.keras.Model(sequences_input_title, pred_title, name="news_encoder")
+        
+        
         return model
 
     def _build_nrms(self):
@@ -421,11 +455,13 @@ class NRMSModel:
             shape=(self.hparams.history_size, self.hparams.title_size),
             dtype="int32",
         )
+        print("MODEL - his_input: ", his_input_title.shape)
         pred_input_title = tf.keras.Input(
             # shape = (hparams.npratio + 1, hparams.title_size)
             shape=(None, self.hparams.title_size),
             dtype="int32",
         )
+        print("MODEL - pred_input: ", pred_input_title.shape)
         pred_input_title_one = tf.keras.Input(
             shape=(
                 1,
@@ -447,14 +483,17 @@ class NRMSModel:
         news_present_one = self.newsencoder(pred_title_one_reshape)
 
         preds = tf.keras.layers.Dot(axes=-1)([news_present, user_present])
+        print("MODEL - final pred: ", preds.shape)
+
         preds = tf.keras.layers.Activation(activation="softmax")(preds)
 
         pred_one = tf.keras.layers.Dot(axes=-1)([news_present_one, user_present])
         pred_one = tf.keras.layers.Activation(activation="sigmoid")(pred_one)
-
+        
         model = tf.keras.Model([his_input_title, pred_input_title], preds)
         scorer = tf.keras.Model([his_input_title, pred_input_title_one], pred_one)
 
+        
         return model, scorer
     
 
