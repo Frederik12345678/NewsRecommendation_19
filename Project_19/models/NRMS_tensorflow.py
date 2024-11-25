@@ -180,7 +180,7 @@ class SelfAttention(layers.Layer):
             initializer=keras.initializers.glorot_uniform(seed=self.seed),
             trainable=True,
         )
-        #print("WQ shape:", self.WQ.shape)
+        print("WQ shape:", self.WQ.shape)
         #print("WK shape:", self.WK.shape)
         #print("WV shape:", self.WV.shape)
         super(SelfAttention, self).build(input_shape)
@@ -455,13 +455,13 @@ class NRMSModel:
             shape=(self.hparams.history_size, self.hparams.title_size),
             dtype="int32",
         )
-        print("MODEL - his_input: ", his_input_title.shape)
+        #print("MODEL - his_input: ", his_input_title.shape)
         pred_input_title = tf.keras.Input(
             # shape = (hparams.npratio + 1, hparams.title_size)
             shape=(None, self.hparams.title_size),
             dtype="int32",
         )
-        print("MODEL - pred_input: ", pred_input_title.shape)
+        #print("MODEL - pred_input: ", pred_input_title.shape)
         pred_input_title_one = tf.keras.Input(
             shape=(
                 1,
@@ -483,7 +483,7 @@ class NRMSModel:
         news_present_one = self.newsencoder(pred_title_one_reshape)
 
         preds = tf.keras.layers.Dot(axes=-1)([news_present, user_present])
-        print("MODEL - final pred: ", preds.shape)
+        #print("MODEL - final pred: ", preds.shape)
 
         preds = tf.keras.layers.Activation(activation="softmax")(preds)
 

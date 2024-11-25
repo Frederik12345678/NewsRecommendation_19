@@ -101,6 +101,7 @@ class NRMSDataLoader(NewsrecDataLoader):
                 batch_X[self.inview_col].explode().to_list()
             ]
         else:
+            
             batch_y = np.array(batch_y.to_list())
             his_input_title = self.lookup_article_matrix[
                 batch_X[self.history_column].to_list()
