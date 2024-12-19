@@ -791,6 +791,21 @@ def convert_text2encoding_with_transformers(
     return df.with_columns(pl.Series(new_column, encoded_tokens)), new_column
 
 
+def create_article_id_to_value_mapping_list(
+    df: pl.DataFrame,
+    value_col: list[str],  # Allow a list of column names
+    article_col: str = "article_id",
+) -> dict:
+    """
+    Create a mapping from article_id to multiple values.
+    Combines the values from multiple columns into a tuple for each article_id.
+    """
+    # Combine value columns into a single structured column
+    df = df.with_columns(pl.struct(value_col).alias("combined_values"))
+    
+    # Use `combined_values` as the value column in the lookup dictionary
+    return create_lookup_dict(df, key=article_col, value="combined_values")
+
 
 def create_article_id_to_value_mapping(
     df: pl.DataFrame,
@@ -1076,7 +1091,7 @@ def repeat_by_list_values_from_matrix(
 
 
 def create_lookup_objects(
-    lookup_dictionary: dict[int, np.array], unknown_representation: str
+    lookup_dictionary: dict[int, np.array], unknown_representation: str, boo: False
 ) -> tuple[dict[int, pl.Series], np.array]:
     """Creates lookup objects for efficient data retrieval.
 
@@ -1136,6 +1151,9 @@ def create_lookup_objects(
     }
     # MAKE LOOKUP MATRIX
     lookup_matrix = np.array(list(lookup_dictionary.values()))
+
+    if boo:
+        lookup_matrix = np.array([[item] for item in lookup_matrix])
 
     if unknown_representation == "zeros":
         UNKNOWN_ARRAY = np.zeros(lookup_matrix.shape[1], dtype=lookup_matrix.dtype)

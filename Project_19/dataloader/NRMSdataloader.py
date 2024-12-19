@@ -19,6 +19,7 @@ class NewsrecDataLoader(tf.keras.utils.Sequence):
     behaviors: pl.DataFrame
     history_column: str
     article_dict: dict[int, any]
+    article_dict_2: dict
     unknown_representation: str
     eval_mode: bool = False
     batch_size: int = 32
@@ -32,8 +33,13 @@ class NewsrecDataLoader(tf.keras.utils.Sequence):
         Post-initialization method. Loads the data and sets additional attributes.
         """
         self.lookup_article_index, self.lookup_article_matrix = create_lookup_objects(
-            self.article_dict, unknown_representation=self.unknown_representation
+            self.article_dict, unknown_representation=self.unknown_representation, boo=False
         )
+
+        self.lookup_article_index_2, self.lookup_article_matrix_2 = create_lookup_objects(
+            self.article_dict_2, unknown_representation=self.unknown_representation, boo=True
+        )
+
         self.unknown_index = [0]
         self.X, self.y = self.load_data()
         if self.kwargs is not None:
@@ -55,7 +61,6 @@ class NewsrecDataLoader(tf.keras.utils.Sequence):
     def set_kwargs(self, kwargs: dict):
         for key, value in kwargs.items():
             setattr(self, key, value)
-
 
 
 @dataclass
@@ -84,8 +89,10 @@ class NRMSDataLoader(NewsrecDataLoader):
         batch_X = self.X[idx * self.batch_size : (idx + 1) * self.batch_size].pipe(
             self.transform
         )
+        
         batch_y = self.y[idx * self.batch_size : (idx + 1) * self.batch_size]
-        # =>
+
+
         if self.eval_mode:
             repeats = np.array(batch_X["n_samples"])
             # =>
@@ -100,17 +107,43 @@ class NRMSDataLoader(NewsrecDataLoader):
             pred_input_title = self.lookup_article_matrix[
                 batch_X[self.inview_col].explode().to_list()
             ]
+
+            his_input_time = repeat_by_list_values_from_matrix(
+                batch_X[self.history_column].to_list(),
+                matrix=self.lookup_article_matrix_2,
+                repeats=repeats,
+            )
+            # =>
+            pred_input_time = self.lookup_article_matrix_2[
+                batch_X[self.inview_col].explode().to_list()
+            ]
+
         else:
             
             batch_y = np.array(batch_y.to_list())
+
             his_input_title = self.lookup_article_matrix[
                 batch_X[self.history_column].to_list()
             ]
             pred_input_title = self.lookup_article_matrix[
                 batch_X[self.inview_col].to_list()
             ]
-            pred_input_title = np.squeeze(pred_input_title, axis=2)
 
+            his_input_time = self.lookup_article_matrix_2[
+                batch_X[self.history_column].to_list()
+            ]
+            pred_input_time = self.lookup_article_matrix_2[
+                batch_X[self.inview_col].to_list()
+            ]
+
+            pred_input_time = np.squeeze(pred_input_time, axis=2)
+
+            pred_input_title = np.squeeze(pred_input_title, axis=2)
+            #print("pred after :",pred_input_title.shape)
+
+        his_input_time = np.squeeze(his_input_time, axis=2)
         his_input_title = np.squeeze(his_input_title, axis=2)
-        return (his_input_title, pred_input_title), batch_y
+        #print("pred after :",his_input_title.shape)
+        return (his_input_title, pred_input_title), batch_y, (his_input_time,pred_input_time)
+
 
